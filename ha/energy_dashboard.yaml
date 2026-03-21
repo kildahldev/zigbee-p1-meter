@@ -1,0 +1,103 @@
+# P1 Meter Energy Dashboard
+# Deployed to HA as /p1-energy
+#
+# Built-in HA Energy Dashboard (separate from this Lovelace dashboard):
+#   Settings → Dashboards → Energy
+#   - Grid consumption: sensor.p1_meter_energy
+#   - Return to grid:   sensor.p1_meter_produced_energy
+#
+# Entity names from Z2M friendly_name "p1-meter" → sensor.p1_meter_*
+
+title: Energy
+views:
+  - title: P1 Meter
+    path: p1-meter
+    type: sections
+    max_columns: 3
+    sections:
+      # ── Overview ──
+      - title: Overview
+        type: grid
+        cards:
+          - type: tile
+            entity: sensor.p1_meter_power
+            name: Total Power
+            icon: mdi:flash
+          - type: tile
+            entity: sensor.p1_meter_energy
+            name: Energy Consumed
+            icon: mdi:counter
+          - type: tile
+            entity: sensor.p1_meter_produced_energy
+            name: Energy Returned
+            icon: mdi:solar-power
+
+      # ── Phase A ──
+      - title: Phase A
+        type: grid
+        cards:
+          - type: tile
+            entity: sensor.p1_meter_power_phase_a
+            name: Power
+            icon: mdi:flash
+            color: red
+          - type: tile
+            entity: sensor.p1_meter_voltage_phase_a
+            name: Voltage
+            icon: mdi:sine-wave
+          - type: tile
+            entity: sensor.p1_meter_current_phase_a
+            name: Current
+            icon: mdi:current-ac
+
+      # ── Phase B ──
+      - title: Phase B
+        type: grid
+        cards:
+          - type: tile
+            entity: sensor.p1_meter_power_phase_b
+            name: Power
+            icon: mdi:flash
+            color: amber
+          - type: tile
+            entity: sensor.p1_meter_voltage_phase_b
+            name: Voltage
+            icon: mdi:sine-wave
+          - type: tile
+            entity: sensor.p1_meter_current_phase_b
+            name: Current
+            icon: mdi:current-ac
+
+      # ── Phase C ──
+      - title: Phase C
+        type: grid
+        cards:
+          - type: tile
+            entity: sensor.p1_meter_power_phase_c
+            name: Power
+            icon: mdi:flash
+            color: blue
+          - type: tile
+            entity: sensor.p1_meter_voltage_phase_c
+            name: Voltage
+            icon: mdi:sine-wave
+          - type: tile
+            entity: sensor.p1_meter_current_phase_c
+            name: Current
+            icon: mdi:current-ac
+
+      # ── Power History ──
+      - title: Power History
+        type: grid
+        cards:
+          - type: history-graph
+            entities:
+              - entity: sensor.p1_meter_power
+                name: Total
+              - entity: sensor.p1_meter_power_phase_a
+                name: Phase A
+              - entity: sensor.p1_meter_power_phase_b
+                name: Phase B
+              - entity: sensor.p1_meter_power_phase_c
+                name: Phase C
+            hours_to_show: 24

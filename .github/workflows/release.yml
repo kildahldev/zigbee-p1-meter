@@ -1,0 +1,97 @@
+name: Build & Release OTA
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          # Verify tag matches firmware version in zigbee_device.h
+          MAJOR=$(grep '#define FW_VERSION_MAJOR' main/zigbee_device.h | awk '{print $3}')
+          MINOR=$(grep '#define FW_VERSION_MINOR' main/zigbee_device.h | awk '{print $3}')
+          PATCH=$(grep '#define FW_VERSION_PATCH' main/zigbee_device.h | awk '{print $3}')
+          FW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          if [ "$TAG" != "$FW_VERSION" ]; then
+            echo "::error::Tag v${TAG} does not match firmware version ${FW_VERSION} in zigbee_device.h"
+            exit 1
+          fi
+          echo "fw_version=$FW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.1
+          target: esp32c6
+          command: idf.py build
+
+      - name: Package OTA file
+        run: |
+          HEADER=main/zigbee_device.h
+          MANUFACTURER=$(grep '#define OTA_MANUFACTURER_CODE' "$HEADER" | awk '{print $3}')
+          IMAGE_TYPE=$(grep '#define OTA_IMAGE_TYPE' "$HEADER" | awk '{print $3}')
+          FW_MAJOR=$(grep '#define FW_VERSION_MAJOR' "$HEADER" | awk '{print $3}')
+          FW_MINOR=$(grep '#define FW_VERSION_MINOR' "$HEADER" | awk '{print $3}')
+          FW_PATCH=$(grep '#define FW_VERSION_PATCH' "$HEADER" | awk '{print $3}')
+
+          python3 -c "
+          import struct
+
+          fw_data = open('build/zigbee_p1_meter.bin', 'rb').read()
+          fw_size = len(fw_data)
+
+          magic = 0x0BEEF11E
+          header_version = 0x0100
+          header_length = 56
+          field_control = 0x0000
+          manufacturer = $MANUFACTURER
+          image_type = $IMAGE_TYPE
+          file_version = ($FW_MAJOR << 24) | ($FW_MINOR << 16) | $FW_PATCH
+          zigbee_stack_version = 0x0002
+          header_string = b'Homey P1 Meter OTA'.ljust(32, b'\x00')
+          total_size = header_length + 6 + fw_size
+
+          header  = struct.pack('<I', magic)
+          header += struct.pack('<H', header_version)
+          header += struct.pack('<H', header_length)
+          header += struct.pack('<H', field_control)
+          header += struct.pack('<H', manufacturer)
+          header += struct.pack('<H', image_type)
+          header += struct.pack('<I', file_version)
+          header += struct.pack('<H', zigbee_stack_version)
+          header += header_string
+          header += struct.pack('<I', total_size)
+
+          assert len(header) == header_length
+
+          sub_header = struct.pack('<HI', 0x0000, fw_size)
+
+          with open('build/zigbee_p1_meter.ota', 'wb') as f:
+              f.write(header)
+              f.write(sub_header)
+              f.write(fw_data)
+
+          print(f'OTA file created: {total_size} bytes (firmware: {fw_size} bytes)')
+          "
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Zigbee P1 Meter v${{ steps.version.outputs.fw_version }}
+          generate_release_notes: true
+          files: |
+            build/zigbee_p1_meter.ota
+            build/zigbee_p1_meter.bin

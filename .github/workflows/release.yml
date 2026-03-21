@@ -47,10 +47,13 @@ jobs:
           FW_MINOR=$(grep '#define FW_VERSION_MINOR' "$HEADER" | awk '{print $3}')
           FW_PATCH=$(grep '#define FW_VERSION_PATCH' "$HEADER" | awk '{print $3}')
 
+          # Copy bin out of docker-owned build dir
+          cp build/zigbee_p1_meter.bin zigbee_p1_meter.bin
+
           python3 -c "
           import struct
 
-          fw_data = open('build/zigbee_p1_meter.bin', 'rb').read()
+          fw_data = open('zigbee_p1_meter.bin', 'rb').read()
           fw_size = len(fw_data)
 
           magic = 0x0BEEF11E
@@ -79,7 +82,7 @@ jobs:
 
           sub_header = struct.pack('<HI', 0x0000, fw_size)
 
-          with open('build/zigbee_p1_meter.ota', 'wb') as f:
+          with open('zigbee_p1_meter.ota', 'wb') as f:
               f.write(header)
               f.write(sub_header)
               f.write(fw_data)
@@ -93,5 +96,5 @@ jobs:
           name: Zigbee P1 Meter v${{ steps.version.outputs.fw_version }}
           generate_release_notes: true
           files: |
-            build/zigbee_p1_meter.ota
-            build/zigbee_p1_meter.bin
+            zigbee_p1_meter.ota
+            zigbee_p1_meter.bin

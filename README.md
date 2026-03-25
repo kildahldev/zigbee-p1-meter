@@ -7,7 +7,11 @@ Probably also works for other similar hardware.
 Should work with any DSMR 5.0 compliant meter (Landis+Gyr, Kaifa, Kamstrup, Iskra, Sagemcom, etc).
 
 
-Was written for my use case where I had a Homey Energy Dongle but wanted to utilize the Zigbee capability of the C6 instead of wifi. Can probably be improved a bunch and/or support more devices, feel free to write a PR
+Was written for my use case where I had a Homey Energy Dongle but wanted to utilize the Zigbee capability of the C6 instead of wifi. Can probably be improved a bunch and/or support more devices, feel free to write a PR.
+
+Here is an example of how you can use the data in a dashboard
+<img width="2864" height="1534" alt="image" src="https://github.com/user-attachments/assets/55518db7-f02f-4c25-b29f-738807bcd441" />
+
 
 ## Build & Flash
 

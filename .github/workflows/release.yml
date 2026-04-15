@@ -101,3 +101,30 @@ jobs:
           files: |
             zigbee_p1_meter.ota
             zigbee_p1_meter.bin
+
+      - name: Update OTA index
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          HEADER=main/zigbee_device.h
+          MAJOR=$(grep '#define FW_VERSION_MAJOR' "$HEADER" | awk '{print $3}')
+          MINOR=$(grep '#define FW_VERSION_MINOR' "$HEADER" | awk '{print $3}')
+          PATCH=$(grep '#define FW_VERSION_PATCH' "$HEADER" | awk '{print $3}')
+          FILE_VERSION=$(( (MAJOR << 24) | (MINOR << 16) | PATCH ))
+
+          cat > ota/index.json << IDX
+          [
+            {
+              "modelId": "P1Meter",
+              "manufacturerCode": 4919,
+              "imageType": 1,
+              "fileVersion": ${FILE_VERSION},
+              "url": "https://github.com/kildahldev/zigbee-p1-meter/releases/download/v${TAG}/zigbee_p1_meter.ota"
+            }
+          ]
+          IDX
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ota/index.json
+          git commit -m "Update OTA index for v${TAG}" || true
+          git push origin HEAD:master

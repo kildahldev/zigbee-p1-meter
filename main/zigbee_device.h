@@ -9,8 +9,8 @@
 
 #define FW_VERSION_MAJOR    1
 #define FW_VERSION_MINOR    0
-#define FW_VERSION_PATCH    8
-#define FW_VERSION_STRING   "1.0.8"
+#define FW_VERSION_PATCH    9
+#define FW_VERSION_STRING   "1.0.9"
 
 #define OTA_MANUFACTURER_CODE   0x1337
 #define OTA_IMAGE_TYPE          0x0001

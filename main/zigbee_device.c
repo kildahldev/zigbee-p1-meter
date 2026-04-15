@@ -24,13 +24,17 @@ bool zigbee_is_connected(void)
 
 /* ---------- Attribute update helpers ---------- */
 
-static void set_attr_and_report(uint8_t endpoint, uint16_t cluster_id,
-                                uint16_t attr_id, void *value)
+static void set_attr(uint8_t endpoint, uint16_t cluster_id,
+                     uint16_t attr_id, void *value)
 {
     esp_zb_zcl_set_attribute_val(endpoint, cluster_id,
                                   ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
                                   attr_id, value, false);
+}
 
+static void report_attr(uint8_t endpoint, uint16_t cluster_id,
+                        uint16_t attr_id)
+{
     esp_zb_zcl_report_attr_cmd_t cmd = {
         .zcl_basic_cmd.src_endpoint = endpoint,
         .address_mode = ESP_ZB_APS_ADDR_MODE_DST_ADDR_ENDP_NOT_PRESENT,
@@ -47,64 +51,65 @@ void zigbee_update_attributes(const zigbee_sensor_data_t *data)
 
     uint16_t cluster = ESP_ZB_ZCL_CLUSTER_ID_ELECTRICAL_MEASUREMENT;
 
-    // Voltage L1/L2/L3
+    // Set all electrical measurement attributes first (no reports)
     uint16_t v;
     v = data->voltage_l1;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSVOLTAGE_ID, &v);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSVOLTAGE_ID, &v);
     v = data->voltage_l2;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSVOLTAGE_PHB_ID, &v);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSVOLTAGE_PHB_ID, &v);
     v = data->voltage_l3;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSVOLTAGE_PHC_ID, &v);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSVOLTAGE_PHC_ID, &v);
 
-    // Current L1/L2/L3
     v = data->current_l1;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_ID, &v);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_ID, &v);
     v = data->current_l2;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_PHB_ID, &v);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_PHB_ID, &v);
     v = data->current_l3;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_PHC_ID, &v);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_PHC_ID, &v);
 
-    // Active Power L1/L2/L3
     int16_t p;
     p = data->power_l1;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_ACTIVE_POWER_ID, &p);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_ACTIVE_POWER_ID, &p);
     p = data->power_l2;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_ACTIVE_POWER_PHB_ID, &p);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_ACTIVE_POWER_PHB_ID, &p);
     p = data->power_l3;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_ACTIVE_POWER_PHC_ID, &p);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_ACTIVE_POWER_PHC_ID, &p);
 
-    // Total active power
     int32_t total = data->power_total;
-    set_attr_and_report(ZB_ENDPOINT, cluster,
-                        ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_TOTAL_ACTIVE_POWER_ID, &total);
+    set_attr(ZB_ENDPOINT, cluster,
+             ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_TOTAL_ACTIVE_POWER_ID, &total);
 
-    // Metering: energy delivered/received (uint48 = 6 bytes, low 48 bits of uint64)
+    // Set all metering attributes (no reports)
     uint16_t met_cluster = ESP_ZB_ZCL_CLUSTER_ID_METERING;
 
     esp_zb_uint48_t delivered = {
         .low = (uint32_t)(data->energy_delivered & 0xFFFFFFFF),
         .high = (uint16_t)((data->energy_delivered >> 32) & 0xFFFF),
     };
-    set_attr_and_report(ZB_ENDPOINT, met_cluster,
-                        ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID,
-                        &delivered);
+    set_attr(ZB_ENDPOINT, met_cluster,
+             ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &delivered);
 
     esp_zb_uint48_t received = {
         .low = (uint32_t)(data->energy_received & 0xFFFFFFFF),
         .high = (uint16_t)((data->energy_received >> 32) & 0xFFFF),
     };
-    set_attr_and_report(ZB_ENDPOINT, met_cluster,
-                        ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_RECEIVED_ID,
-                        &received);
+    set_attr(ZB_ENDPOINT, met_cluster,
+             ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_RECEIVED_ID, &received);
+
+    // Now send one report per cluster to trigger Z2M state publish
+    report_attr(ZB_ENDPOINT, cluster,
+                ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_TOTAL_ACTIVE_POWER_ID);
+    report_attr(ZB_ENDPOINT, met_cluster,
+                ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID);
 
     esp_zb_lock_release();
 }
